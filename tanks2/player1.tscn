@@ -1,0 +1,165 @@
+[gd_scene load_steps=11 format=3 uid="uid://dp82ydlqfj7js"]
+
+[ext_resource type="Texture2D" uid="uid://ci5l1c40bw61p" path="res://Untitled 08-14-2024 11-08-44.png" id="2_lywmd"]
+[ext_resource type="Texture2D" uid="uid://olqv7jwiby6w" path="res://Sprite-0002.jpg" id="3_75xut"]
+[ext_resource type="PackedScene" uid="uid://di33echt7hdsm" path="res://joystick.tscn" id="4_4u7w3"]
+[ext_resource type="Texture2D" uid="uid://ns0a5q1nw74x" path="res://hit0.png" id="5_i45yr"]
+[ext_resource type="Texture2D" uid="uid://cosfg8web48we" path="res://hit1.png" id="6_wihpx"]
+[ext_resource type="Script" path="res://player_input.gd" id="7_qok23"]
+
+[sub_resource type="GDScript" id="GDScript_vdw5q"]
+script/source = "extends Node2D
+const SPEED = 300.0
+@onready var input = $player_input
+@export var player := 1 :
+	set(id):
+		player = id
+		# Give authority over the player input to the appropriate peer.
+		$player_input.set_multiplayer_authority(id)
+func _ready():
+	$marker1/Label.text = Autoload.nickname1
+	# Set the camera as current if we are this player.
+	if player == multiplayer.get_unique_id():
+		$player/Camera2D.make_current() #= true
+	randomize()  # Инициализация генератора случайных чисел
+	var red = randi() % 256  # Получение числа от 0 до 255
+	var green = randi() % 256  # Получение числа от 0 до 255
+	var blue = randi() % 256  # Получение числа от 0 до 255
+	$\"player/Untitled08-14-202411-08-44/Sprite2D\".self_modulate = Color(red / 255.0, green / 255.0, blue / 255.0)
+func _process(delta):
+	if player == multiplayer.get_unique_id():
+		$player.velocity = $player/ui/joystick.get_velo() * SPEED
+		$player.up_direction = Vector2.UP
+		$marker1.position = $player.position
+		$marker1.position.y = $player.position.y - 52
+		var pos = $player/ui/joystick.get_velo() * 10000
+		$player.look_at(pos)
+		$player.move_and_slide()
+		if Input.is_action_just_pressed(\"leftbutton\"):
+			if player == multiplayer.get_unique_id():
+				shoot.rpc()
+			
+@rpc(\"any_peer\", \"reliable\",\"call_local\")
+func shoot():
+	var bullet = preload(\"res://bullet.tscn\").instantiate()
+	get_tree().root.add_child(bullet)
+	bullet.transform = $player/Marker2D.global_transform
+	
+
+@rpc(\"any_peer\", \"reliable\",\"call_local\")
+func death():
+	queue_free()
+"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hegbh"]
+size = Vector2(51, 73)
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_tn81p"]
+properties/0/path = NodePath(".:direction")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath("../player:up_direction")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("../player:rotation")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("../player:position")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_0ms5y"]
+properties/0/path = NodePath(".:player")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath("player:position")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("player:rotation")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("player:up_direction")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+
+[node name="Node2D" type="Node2D"]
+script = SubResource("GDScript_vdw5q")
+
+[node name="marker1" type="Marker2D" parent="."]
+position = Vector2(0, -87)
+
+[node name="Label" type="Label" parent="marker1"]
+offset_left = -20.0
+offset_top = -13.0
+offset_right = 20.0
+offset_bottom = 10.0
+
+[node name="player" type="CharacterBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="player"]
+position = Vector2(-1.5, 0.5)
+rotation = 1.57543
+shape = SubResource("RectangleShape2D_hegbh")
+
+[node name="Untitled08-14-202411-08-44" type="Sprite2D" parent="player"]
+position = Vector2(6, 5)
+rotation = 1.56535
+scale = Vector2(4.25, 4.25)
+texture = ExtResource("2_lywmd")
+
+[node name="Sprite2D" type="Sprite2D" parent="player/Untitled08-14-202411-08-44"]
+position = Vector2(-0.962947, 3.99481)
+rotation = -1.5744
+texture = ExtResource("3_75xut")
+
+[node name="ui" type="CanvasLayer" parent="player"]
+
+[node name="joystick" parent="player/ui" instance=ExtResource("4_4u7w3")]
+position = Vector2(121, 512)
+
+[node name="Control" type="Control" parent="player/ui"]
+layout_mode = 3
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -208.0
+offset_top = -321.5
+offset_bottom = 321.5
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="TouchScreenButton" type="TouchScreenButton" parent="player/ui/Control"]
+position = Vector2(91, 493)
+texture_normal = ExtResource("5_i45yr")
+texture_pressed = ExtResource("6_wihpx")
+action = "leftbutton"
+
+[node name="Button" type="Button" parent="player/ui/Control"]
+visible = false
+layout_mode = 0
+offset_left = 107.0
+offset_top = 1.5
+offset_right = 199.0
+offset_bottom = 32.5
+text = "disconnect"
+
+[node name="Camera2D" type="Camera2D" parent="player"]
+rotation = 0.0401692
+position_smoothing_enabled = true
+
+[node name="Marker2D" type="Marker2D" parent="player"]
+position = Vector2(70, 0)
+
+[node name="marker" type="Marker2D" parent="player"]
+
+[node name="player_input" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath(".")
+replication_config = SubResource("SceneReplicationConfig_tn81p")
+script = ExtResource("7_qok23")
+
+[node name="serversyn" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_0ms5y")
+
+[connection signal="pressed" from="player/ui/Control/Button" to="player" method="_on_button_pressed"]
